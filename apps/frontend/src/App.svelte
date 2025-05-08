@@ -82,15 +82,20 @@
   <p><strong>Status:</strong> {connectionStatus}</p>
   
   {#if Object.keys(stockData).length > 0 && stockData.timestamp}
-    <div>
-      <h2>Latest Data (Timestamp: {new Date(stockData.timestamp).toLocaleString()}):</h2>
-      <ul>
-        {#each Object.entries(stockData) as [key, value]}
-          {#if key !== 'timestamp'}
-            <li><strong>{key}:</strong> {value}</li>
-          {/if}
-        {/each}
-      </ul>
+    <div class="stock-data-container">
+      <h2>Latest Data (Timestamp: {new Date(stockData.timestamp).toLocaleString()})</h2>
+      {#each Object.entries(stockData) as [category, stocks]}
+        {#if category !== 'timestamp' && typeof stocks === 'object' && stocks !== null && Object.keys(stocks).length > 0}
+          <div class="category-block">
+            <h3>{category}</h3>
+            <ul class="stock-list">
+              {#each Object.entries(stocks) as [symbol, price]}
+                <li><strong>{symbol}:</strong> {price}</li>
+              {/each}
+            </ul>
+          </div>
+        {/if}
+      {/each}
     </div>
   {:else if connectionStatus.startsWith("Joined channel")}
     <p>Waiting for the first data push from the server...</p>
@@ -99,34 +104,66 @@
 
 <style>
   main {
-    font-family: sans-serif;
+    font-family: sans-serif; /* Overrides :root if more specific, but generally inherits */
     padding: 1em;
-    max-width: 600px;
-    margin: auto;
-    color: #333;
+    max-width: 700px; /* Wider for categorized content */
+    margin: 0 auto; /* Center the main block within #app */
+    text-align: left; /* Align text to the left within the main block */
+    /* Color will be inherited from body via #app based on app.css */
   }
   h1 {
-    color: #1a1a1a;
     text-align: center;
+    margin-bottom: 1em;
+    /* Color inherited from app.css */
   }
-  p {
+  h2 { /* For "Latest Data..." heading */
+    text-align: center;
+    font-size: 1.4em;
+    margin-bottom: 0.5em;
+    /* Color inherited */
+  }
+  h3 { /* For Category headings */
+    font-size: 1.2em;
+    margin-top: 1.5em; /* Space above category name */
+    margin-bottom: 0.75em;
+    padding-bottom: 0.25em;
+    border-bottom: 1px solid #ccc; /* Neutral border color */
+    /* Color inherited */
+  }
+  p { /* For status message */
     text-align: center;
     margin-bottom: 1.5em;
+    /* Color inherited */
   }
-  ul {
+  .stock-data-container {
+    margin-top: 1em;
+  }
+  .category-block {
+    margin-bottom: 1.5em; /* Space between category blocks */
+    padding: 1em;
+    border: 1px solid #ddd; /* Light border for the block */
+    border-radius: 8px;
+    /* Background will be transparent to main's background (body background) */
+  }
+  .stock-list {
     list-style-type: none;
     padding: 0;
   }
-  li {
-    background-color: #f9f9f9;
-    border: 1px solid #eee;
+  .stock-list li {
+    background-color: rgba(0,0,0,0.02); /* Subtle background, works on light/dark */
+    border: 1px solid rgba(0,0,0,0.05); /* Subtle border */
     margin-bottom: 8px;
-    padding: 12px 15px;
+    padding: 10px 15px;
     border-radius: 4px;
     display: flex;
     justify-content: space-between;
+    transition: background-color 0.2s ease-in-out;
   }
-  li strong {
-    color: #555;
+  .stock-list li:hover {
+    background-color: rgba(0,0,0,0.04); /* Slightly darker on hover */
+  }
+  .stock-list li strong {
+    color: #007bff; /* A common blue, generally visible on light/dark themes */
+    margin-right: 8px; /* Space between symbol and price */
   }
 </style>
