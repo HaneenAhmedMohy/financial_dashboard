@@ -37,3 +37,4 @@ npm run dev
 #### Screenshots
 
 #### 1. milestone 1
+![Alt Text](https://github.com/HaneenAhmedMohy/financial_dashboard/blob/main/apps/screenshots/milestone_1.png)
