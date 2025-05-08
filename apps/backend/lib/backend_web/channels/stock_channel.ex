@@ -14,10 +14,22 @@ defmodule BackendWeb.StockChannel do
   def handle_info(:send_simulated_data, socket) do
     # Simulate Finnhub data
     data = %{
-      "AAPL" => Enum.random(150..200) + :rand.uniform() |> Float.round(2),
-      "MSFT" => Enum.random(300..350) + :rand.uniform() |> Float.round(2),
-      "NVDA" => Enum.random(800..900) + :rand.uniform() |> Float.round(2),
-      "GOOGL" => Enum.random(170..180) + :rand.uniform() |> Float.round(2),
+      "Technology" => %{
+        "AAPL" => Enum.random(150..200) + :rand.uniform() |> Float.round(2),
+        "MSFT" => Enum.random(300..350) + :rand.uniform() |> Float.round(2),
+        "NVDA" => Enum.random(800..900) + :rand.uniform() |> Float.round(2),
+        "GOOGL" => Enum.random(170..180) + :rand.uniform() |> Float.round(2)
+      },
+      "Finance" => %{
+        "JPM" => Enum.random(180..220) + :rand.uniform() |> Float.round(2),
+        "BAC" => Enum.random(30..40) + :rand.uniform() |> Float.round(2),
+        "V" => Enum.random(250..300) + :rand.uniform() |> Float.round(2)
+      },
+      "Consumer" => %{
+        "AMZN" => Enum.random(170..200) + :rand.uniform() |> Float.round(2),
+        "WMT" => Enum.random(50..70) + :rand.uniform() |> Float.round(2),
+        "MCD" => Enum.random(280..320) + :rand.uniform() |> Float.round(2)
+      },
       "timestamp" => DateTime.utc_now() |> DateTime.to_iso8601()
     }
 
