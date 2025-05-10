@@ -1,17 +1,19 @@
 <script>
-  import { onMount, onDestroy } from 'svelte';
-  import { Socket } from 'phoenix'; // Import the Socket class
+  import { onMount, onDestroy } from "svelte";
+  import { Socket } from "phoenix";
 
   let socket;
   let channel;
-  let stockData = {};
+  let stockData = {}; // This will store data like: { "AAPL": {price: ..., volume: ..., timestamp: ...}, ... }
   let connectionStatus = "Initializing...";
 
   onMount(() => {
     connectionStatus = "Connecting to WebSocket...";
     // The path "/socket" will be proxied by Vite dev server
     // to ws://localhost:4000/socket
-    socket = new Socket("/socket", { params: { user_token: "guest" } }); // params are optional
+    socket = new Socket("ws://localhost:4000/socket", {
+      // Direct Phoenix connection
+    }); // params are optional
 
     socket.onOpen(() => {
       connectionStatus = "Socket connection open.";
@@ -33,18 +35,36 @@
     // Join the "stock:lobby" channel
     channel = socket.channel("stock:lobby", {}); // Second arg is payload for join
 
-    channel.on("stock_update", (payload) => {
-      console.log("Received stock_update:", payload.body);
-      stockData = payload.body; // The data is in payload.body as pushed from channel
-      connectionStatus = `Last update: ${new Date().toLocaleTimeString()}`;
+    // Handler for initial batch of stock data
+    channel.on("initial_stocks", (payload) => {
+      console.log("Received initial_stocks:", payload);
+      stockData = payload; // payload is { SYMBOL: {price, timestamp, volume}, ... }
+      connectionStatus = "Initial stock data loaded.";
     });
 
-    channel.join()
-      .receive("ok", resp => {
+    // Handler for individual stock updates
+    channel.on("stock_update", (payload) => {
+      // payload is {symbol, price, timestamp, volume}
+      console.log("Received stock_update:", payload);
+      // Update the specific stock's data in our stockData map
+      stockData = {
+        ...stockData,
+        [payload.symbol]: {
+          price: payload.price,
+          timestamp: payload.timestamp,
+          volume: payload.volume,
+        },
+      };
+      connectionStatus = `Last update for ${payload.symbol}: ${new Date().toLocaleTimeString()}`;
+    });
+
+    channel
+      .join()
+      .receive("ok", (resp) => {
         console.log("Joined stock:lobby successfully!", resp);
-        connectionStatus = "Joined channel. Waiting for data...";
+        connectionStatus = "Joined channel. Waiting for initial data...";
       })
-      .receive("error", resp => {
+      .receive("error", (resp) => {
         console.error("Unable to join stock:lobby", resp);
         connectionStatus = "Failed to join channel.";
       });
@@ -52,9 +72,12 @@
     // Cleanup on component destroy (when onMount returns a function)
     return () => {
       if (channel) {
-        channel.leave()
+        channel
+          .leave()
           .receive("ok", () => console.log("Left channel successfully."))
-          .receive("error", (err) => console.log("Failed to leave channel.", err));
+          .receive("error", (err) =>
+            console.log("Failed to leave channel.", err)
+          );
       }
       if (socket) {
         socket.disconnect(() => console.log("Socket disconnected."));
@@ -67,91 +90,99 @@
   // This is here for completeness or if you had other non-onMount related cleanup.
   onDestroy(() => {
     // Ensure cleanup if not already handled by onMount's return
-    if (channel && (channel.state === "joined" || channel.state === "joining")) {
-      channel.leave().receive("error", (err) => console.log("Error leaving channel on destroy", err));
+    if (
+      channel &&
+      (channel.state === "joined" || channel.state === "joining")
+    ) {
+      channel
+        .leave()
+        .receive("error", (err) =>
+          console.log("Error leaving channel on destroy", err)
+        );
     }
-    if (socket && (socket.connectionState() === "open" || socket.connectionState() === "connecting")) {
+    if (
+      socket &&
+      (socket.connectionState() === "open" ||
+        socket.connectionState() === "connecting")
+    ) {
       socket.disconnect();
     }
   });
-
 </script>
 
 <main>
   <h1>Real-time Stock Data (Simulated)</h1>
   <p><strong>Status:</strong> {connectionStatus}</p>
-  
-  {#if Object.keys(stockData).length > 0 && stockData.timestamp}
+
+  {#if Object.keys(stockData).length > 0}
     <div class="stock-data-container">
-      <h2>Latest Data (Timestamp: {new Date(stockData.timestamp).toLocaleString()})</h2>
-      {#each Object.entries(stockData) as [category, stocks]}
-        {#if category !== 'timestamp' && typeof stocks === 'object' && stocks !== null && Object.keys(stocks).length > 0}
-          <div class="category-block">
-            <h3>{category}</h3>
-            <ul class="stock-list">
-              {#each Object.entries(stocks) as [symbol, price]}
-                <li><strong>{symbol}:</strong> {price}</li>
-              {/each}
-            </ul>
-          </div>
-        {/if}
+      <h2>Current Stock Data</h2>
+      {#each Object.entries(stockData) as [symbol, data] (symbol)}
+        <div class="stock-block">
+          <h3>{symbol}</h3>
+          <ul class="stock-list">
+            <li>
+              <strong>Price:</strong>
+              <span class="price-value">{data.price}</span>
+            </li>
+            <li><strong>Volume:</strong> {data.volume}</li>
+            <li>
+              <strong>Last Update:</strong>
+              {new Date(data.timestamp).toLocaleString()}
+            </li>
+          </ul>
+        </div>
       {/each}
     </div>
-  {:else if connectionStatus.startsWith("Joined channel")}
-    <p>Waiting for the first data push from the server...</p>
+  {:else if connectionStatus.startsWith("Joined channel") || connectionStatus.startsWith("Initial stock data loaded")}
+    <p>Waiting for data or first update from the server...</p>
   {/if}
 </main>
 
 <style>
   main {
-    font-family: sans-serif; /* Overrides :root if more specific, but generally inherits */
+    font-family: sans-serif;
     padding: 1em;
-    max-width: 700px; /* Wider for categorized content */
-    margin: 0 auto; /* Center the main block within #app */
-    text-align: left; /* Align text to the left within the main block */
-    /* Color will be inherited from body via #app based on app.css */
+    max-width: 700px;
+    margin: 0 auto;
+    text-align: left;
   }
   h1 {
     text-align: center;
     margin-bottom: 1em;
-    /* Color inherited from app.css */
   }
-  h2 { /* For "Latest Data..." heading */
+  h2 {
     text-align: center;
     font-size: 1.4em;
     margin-bottom: 0.5em;
-    /* Color inherited */
   }
-  h3 { /* For Category headings */
+  h3 {
     font-size: 1.2em;
-    margin-top: 1.5em; /* Space above category name */
+    margin-top: 1.5em;
     margin-bottom: 0.75em;
     padding-bottom: 0.25em;
-    border-bottom: 1px solid #ccc; /* Neutral border color */
-    /* Color inherited */
+    border-bottom: 1px solid #ccc;
   }
-  p { /* For status message */
+  p {
     text-align: center;
     margin-bottom: 1.5em;
-    /* Color inherited */
   }
   .stock-data-container {
     margin-top: 1em;
   }
-  .category-block {
-    margin-bottom: 1.5em; /* Space between category blocks */
+  .stock-block {
+    margin-bottom: 1.5em;
     padding: 1em;
-    border: 1px solid #ddd; /* Light border for the block */
+    border: 1px solid #ddd;
     border-radius: 8px;
-    /* Background will be transparent to main's background (body background) */
   }
   .stock-list {
     list-style-type: none;
     padding: 0;
   }
   .stock-list li {
-    background-color: rgba(0,0,0,0.02); /* Subtle background, works on light/dark */
-    border: 1px solid rgba(0,0,0,0.05); /* Subtle border */
+    background-color: rgba(0, 0, 0, 0.02);
+    border: 1px solid rgba(0, 0, 0, 0.05);
     margin-bottom: 8px;
     padding: 10px 15px;
     border-radius: 4px;
@@ -160,10 +191,16 @@
     transition: background-color 0.2s ease-in-out;
   }
   .stock-list li:hover {
-    background-color: rgba(0,0,0,0.04); /* Slightly darker on hover */
+    background-color: rgba(0, 0, 0, 0.04);
   }
   .stock-list li strong {
-    color: #007bff; /* A common blue, generally visible on light/dark themes */
-    margin-right: 8px; /* Space between symbol and price */
+    color: #007bff;
+    margin-right: 8px;
   }
+  .price-value {
+    font-weight: bold;
+    font-size: 1.05em;
+    color: #2ecc71; /* A shade of green */
+  }
+  /* You could add more specific styling for price up/down if you track previous price */
 </style>

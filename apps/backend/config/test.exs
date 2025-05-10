@@ -1,3 +1,5 @@
+Code.ensure_loaded?(Dotenv) && Dotenv.load()
+
 import Config
 
 # Configure your database
@@ -7,7 +9,7 @@ import Config
 # Run `mix help test` for more information.
 config :backend, Backend.Repo,
   username: "postgres",
-  password: "postgres",
+  password: "9999",
   hostname: "localhost",
   database: "backend_test#{System.get_env("MIX_TEST_PARTITION")}",
   pool: Ecto.Adapters.SQL.Sandbox,

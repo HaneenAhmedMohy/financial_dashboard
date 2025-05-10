@@ -5,8 +5,17 @@ defmodule BackendWeb.Router do
     plug :accepts, ["json"]
   end
 
+  # New scope for the root path
+  scope "/", BackendWeb do
+    pipe_through :api # Use the API pipeline for JSON responses
+
+    get "/", PageController, :index # Route GET / to PageController.index/2
+  end
+
   scope "/api", BackendWeb do
     pipe_through :api
+
+    get "/stocks", StockController, :index
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development

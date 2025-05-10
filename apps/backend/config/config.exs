@@ -7,9 +7,13 @@
 # General application configuration
 import Config
 
+Code.ensure_loaded?(Dotenv) && Dotenv.load()
+
 config :backend,
   ecto_repos: [Backend.Repo],
   generators: [timestamp_type: :utc_datetime]
+
+config :backend, :finnhub_api_key, System.get_env("FINNHUB_API_KEY")
 
 # Configures the endpoint
 config :backend, BackendWeb.Endpoint,

@@ -4,8 +4,7 @@ defmodule BackendWeb.UserSocket do
   # Define the channel your Svelte app will connect to
   channel "stock:lobby", BackendWeb.StockChannel
 
-  # Configure transports, WebSocket is primary for real-time
-  transport :websocket, Phoenix.Transports.WebSocket
+  # Transports are now configured in your Endpoint.
   # transport :longpoll, Phoenix.Transports.LongPoll # You can enable this as a fallback if needed
 
   # This function is called when a client attempts to connect.

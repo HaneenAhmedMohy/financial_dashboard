@@ -14,6 +14,10 @@ defmodule Backend.Application do
       {Phoenix.PubSub, name: Backend.PubSub},
       # Start the Finch HTTP client for sending emails
       {Finch, name: Backend.Finch},
+      # Start the ETS table for stock data
+      Backend.StockData.Store,
+      # Start the Finnhub WebSocket client
+      Backend.Finnhub.SocketClient,
       # Start a worker by calling: Backend.Worker.start_link(arg)
       # {Backend.Worker, arg},
       # Start to serve requests, typically the last entry

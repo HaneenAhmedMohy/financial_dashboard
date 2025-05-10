@@ -1,9 +1,11 @@
+Code.ensure_loaded?(Dotenv) && Dotenv.load()
+
 import Config
 
 # Configure your database
 config :backend, Backend.Repo,
   username: "postgres",
-  password: "postgres",
+  password: "9999",
   hostname: "localhost",
   database: "backend_dev",
   stacktrace: true,

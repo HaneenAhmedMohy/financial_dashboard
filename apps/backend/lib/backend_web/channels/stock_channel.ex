@@ -1,47 +1,42 @@
 defmodule BackendWeb.StockChannel do
   use Phoenix.Channel
   require Logger
+  alias Backend.StockData.Store # Alias for convenience
 
-  # Called when a client joins the "stock:lobby" topic
+  @impl true
   def join("stock:lobby", _payload, socket) do
     Logger.info("Client joined stock:lobby on socket #{inspect(socket.id)}")
-    # Start sending periodic updates for this client
-    send(self(), :send_simulated_data)
+
+    # Subscribe to stock updates from PubSub
+    Phoenix.PubSub.subscribe(Backend.PubSub, "stock_updates")
+
+    # Send current stock data to the joining client
+    initial_stock_data_list = Store.get_all_stock_data()
+    # Convert [{symbol, data_map}, ...] to %{symbol => data_map}
+    initial_stock_data_map = Enum.into(initial_stock_data_list, %{})
+
+    push(socket, "initial_stocks", initial_stock_data_map)
+
     {:ok, socket}
   end
 
-  # Internal message handler to periodically send data
-  def handle_info(:send_simulated_data, socket) do
-    # Simulate Finnhub data
-    data = %{
-      "Technology" => %{
-        "AAPL" => Enum.random(150..200) + :rand.uniform() |> Float.round(2),
-        "MSFT" => Enum.random(300..350) + :rand.uniform() |> Float.round(2),
-        "NVDA" => Enum.random(800..900) + :rand.uniform() |> Float.round(2),
-        "GOOGL" => Enum.random(170..180) + :rand.uniform() |> Float.round(2)
-      },
-      "Finance" => %{
-        "JPM" => Enum.random(180..220) + :rand.uniform() |> Float.round(2),
-        "BAC" => Enum.random(30..40) + :rand.uniform() |> Float.round(2),
-        "V" => Enum.random(250..300) + :rand.uniform() |> Float.round(2)
-      },
-      "Consumer" => %{
-        "AMZN" => Enum.random(170..200) + :rand.uniform() |> Float.round(2),
-        "WMT" => Enum.random(50..70) + :rand.uniform() |> Float.round(2),
-        "MCD" => Enum.random(280..320) + :rand.uniform() |> Float.round(2)
-      },
-      "timestamp" => DateTime.utc_now() |> DateTime.to_iso8601()
-    }
-
-    # Push the data to the client on the "stock_update" event
-    push(socket, "stock_update", %{body: data})
-
-    # Schedule the next update after 3 seconds (3000 milliseconds)
-    Process.send_after(self(), :send_simulated_data, 3000)
+  # This new handle_info callback handles messages broadcasted by PubSub
+  @impl true
+  def handle_info({:stock_trade, payload}, socket) do
+    # payload is %{symbol: symbol, price: price, timestamp: timestamp, volume: volume}
+    # Push the new trade data to the client
+    push(socket, "stock_update", payload)
     {:noreply, socket}
   end
 
-  # Called when the channel process terminates
+  # This handle_info is for other messages, can be kept or removed if not used
+  @impl true
+  def handle_info(msg, socket) do
+    Logger.debug("StockChannel received unhandled message: #{inspect(msg)}")
+    {:noreply, socket}
+  end
+
+  @impl true
   def terminate(reason, socket) do
     Logger.info("Client left stock:lobby (socket #{inspect(socket.id)}), reason: #{inspect(reason)}")
     :ok
